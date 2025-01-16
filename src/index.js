@@ -18,7 +18,7 @@ app.use('/api/maps', mapRoutes);
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    const dbConnected = await testConnection();
+    const dbConnected = await testConnection(1); // Single attempt for health check
     res.status(200).json({ 
       status: 'OK',
       database: dbConnected ? 'Connected' : 'Disconnected'
@@ -32,19 +32,23 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Error handling middleware - should be after routes
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something broke!', details: err.message });
 });
 
 // Handle server shutdown gracefully
-const gracefulShutdown = () => {
+const gracefulShutdown = async () => {
   console.log('Received shutdown signal. Closing server...');
-  pool.end(() => {
+  try {
+    await pool.end();
     console.log('Pool has ended');
     process.exit(0);
-  });
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
 };
 
 process.on('SIGTERM', gracefulShutdown);
@@ -58,35 +62,39 @@ process.on('uncaughtException', (err) => {
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
-  gracefulShutdown();
+  // Log but don't exit for unhandled rejections
 });
 
 const startServer = async () => {
+  let dbConnected = false;
+  
   try {
-    // Test database connection before starting the server
-    const dbConnected = await testConnection();
+    // Try to connect to database with retries
+    dbConnected = await testConnection(3);
+    
     if (!dbConnected) {
-      console.error('Unable to connect to the database. Server will not start.');
-      process.exit(1);
+      console.warn('Unable to establish initial database connection. Starting server anyway...');
     }
     
     const server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
+      console.log(`Database connection status: ${dbConnected ? 'Connected' : 'Not Connected'}`);
     });
 
     server.on('error', (error) => {
+      console.error('Server error:', error);
       if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use. Trying another port...`);
-        server.close();
-        startServer();
-      } else {
-        console.error('Server error:', error);
+        console.error(`Port ${PORT} is already in use`);
+        process.exit(1);
       }
     });
 
   } catch (error) {
     console.error('Failed to start server:', error);
-    process.exit(1);
+    // Don't exit, let the server start anyway
+    const server = app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT} (with database connection issues)`);
+    });
   }
 };
 
