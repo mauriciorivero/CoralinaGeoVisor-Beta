@@ -1,23 +1,25 @@
 const { Pool } = require('pg');
 
 const poolConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  // Add these configurations for better connection handling
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 2000, // How long to wait when connecting a new client
-  keepAlive: true // Enables TCP Keep-Alive probes
+  ssl: {
+    rejectUnauthorized: false // Required for Supabase connection
+  },
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  keepAlive: true
 };
 
 const pool = new Pool(poolConfig);
 
 // Log pool events for debugging
 pool.on('connect', () => {
-  console.log('Database connection established');
+  console.log('Database connection established with Supabase');
 });
 
 pool.on('error', (err) => {
@@ -38,10 +40,17 @@ const testConnection = async () => {
   try {
     client = await pool.connect();
     await client.query('SELECT NOW()');
-    console.log('Database connection test successful');
+    console.log('Supabase database connection test successful');
     return true;
   } catch (err) {
-    console.error('Database connection test failed:', err);
+    console.error('Supabase database connection test failed:', err);
+    console.error('Connection details:', {
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      // Not logging password for security
+    });
     return false;
   } finally {
     if (client) client.release();
