@@ -1,13 +1,22 @@
 const { Pool } = require('pg');
 
+// Production configuration (Supabase)
+const productionConfig = {
+  host: 'db.ncugtjhbcjfuznusrncv.supabase.co',
+  port: 5432,
+  database: 'postgres',
+  user: 'postgres',
+  password: 'Ang13_0rozco'
+};
+
 const poolConfig = {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST || productionConfig.host,
+  port: process.env.DB_PORT || productionConfig.port,
+  database: process.env.DB_NAME || productionConfig.database,
+  user: process.env.DB_USER || productionConfig.user,
+  password: process.env.DB_PASSWORD || productionConfig.password,
   ssl: {
-    rejectUnauthorized: false // Required for Supabase connection
+    rejectUnauthorized: false
   },
   max: 20,
   idleTimeoutMillis: 30000,
@@ -45,10 +54,10 @@ const testConnection = async () => {
   } catch (err) {
     console.error('Supabase database connection test failed:', err);
     console.error('Connection details:', {
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
+      host: poolConfig.host,
+      port: poolConfig.port,
+      database: poolConfig.database,
+      user: poolConfig.user,
       // Not logging password for security
     });
     return false;
