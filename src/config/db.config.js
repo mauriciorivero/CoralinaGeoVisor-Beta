@@ -1,20 +1,9 @@
 const { Pool } = require('pg');
 
-// Production configuration (Supabase)
-const productionConfig = {
-  host: 'db.ncugtjhbcjfuznusrncv.supabase.co',
-  port: 5432,
-  database: 'postgres',
-  user: 'postgres',
-  password: 'Ang13_0rozco'
-};
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:Ang13_0rozco@db.ncugtjhbcjfuznusrncv.supabase.co:5432/postgres';
 
-const poolConfig = {
-  host: process.env.DB_HOST || productionConfig.host,
-  port: process.env.DB_PORT || productionConfig.port,
-  database: process.env.DB_NAME || productionConfig.database,
-  user: process.env.DB_USER || productionConfig.user,
-  password: process.env.DB_PASSWORD || productionConfig.password,
+const pool = new Pool({
+  connectionString,
   ssl: {
     rejectUnauthorized: false
   },
@@ -22,9 +11,7 @@ const poolConfig = {
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
   keepAlive: true
-};
-
-const pool = new Pool(poolConfig);
+});
 
 // Log pool events for debugging
 pool.on('connect', () => {
